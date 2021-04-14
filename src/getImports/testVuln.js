@@ -4,30 +4,27 @@ import logger from '../logger';
 import utm from '../utm';
 import statistics from '../statistics';
 
-const API_ROOT = 'https://snyk.io/api/v1/vuln/npm/';
+const API_ROOT = 'https://snyk.io/api/v1/test/npm/';
 
 function testNoAuth(key) {
-  return axios
-    .get(`https://snyk.io/test/npm/${key}?${utm}&type=json`)
-    .then(({ data }) => {
-      if (typeof data === 'string') {
-        // bug on snyk's side, returning a string for 404
-        logger.log('bad return on ' + key);
-        throw new Error('bad return from snyk api (unauthed)');
-      }
+  return axios.get(`${API_ROOT}${key}?${utm}&type=json`).then(({ data }) => {
+    if (typeof data === 'string') {
+      // bug on snyk's side, returning a string for 404
+      logger.log('bad return on ' + key);
+      throw new Error('bad return from snyk api (unauthed)');
+    }
 
-      return {
-        ok: data.totalVulns === 0,
-        packageName: data.resultTitle,
-        count: data.totalVulns,
-      };
-    });
+    return {
+      ok: data.totalVulns === 0,
+      packageName: data.resultTitle,
+      count: data.totalVulns,
+    };
+  });
 }
 
 function testWithAuth(pkg) {
-  const encodedName = encodeURIComponent(pkg.name + '@' + pkg.version);
-  // options.vulnEndpoint is only used by `snyk protect` (i.e. local filesystem tests)
-  const url = API_ROOT + encodedName + '?' + utm;
+  const encodedName = encodeURIComponent(pkg.name);
+  const url = `${API_ROOT}${encodedName}/${pkg.version}?${utm}`;
   return axios
     .get(url, {
       headers: {
@@ -40,13 +37,13 @@ function testWithAuth(pkg) {
         res.request.res.responseUrl.replace(API_ROOT, '')
       ).replace(/\?.*$/, '');
 
-      const vulns = res.data.vulnerabilities || [];
+      const vulns = res.data.issues.vulnerabilities || [];
 
       const uniqBasedOnId = new Set();
       vulns.forEach(v => uniqBasedOnId.add(v.id));
 
       return {
-        ...res.data,
+        vulns,
         packageName,
         count: uniqBasedOnId.size,
         fixable: vulns.reduce((acc, curr) => {

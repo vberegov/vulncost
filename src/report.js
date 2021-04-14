@@ -5,7 +5,8 @@ const sortBy = (a, b) => {
 const ucFirst = _ => `${_[0].toUpperCase()}${_.slice(1)}`;
 
 export const summary = pkg => {
-  const message = pkg.vulns.vulnerabilities
+  console.log(pkg);
+  const message = pkg.vulnData.vulns
     .reduce(
       (acc, curr) => {
         acc[sort.indexOf(curr.severity)]++;
